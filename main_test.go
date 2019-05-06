@@ -4,31 +4,35 @@ import "testing"
 
 func Test_channelChime(t *testing.T) {
 	actualGcode := channelChime(0)
-	expectedGcode := "M300 S440 P200\n"
+	expectedGcode := `;// Chime to indicate next channel \\
+M300 S440 P200
+`
 	if actualGcode != expectedGcode {
-		t.Errorf("unexpected chime %s", actualGcode)
+		t.Errorf("unexpected chime ---%s--- vs ---%s---", actualGcode, expectedGcode)
 	}
 
 	actualGcode = channelChime(1)
 	expectedGcode =
-		`M300 S440 P200
+		`;// Chime to indicate next channel \\
+M300 S440 P200
 M300 S440 P100
 G4 P100
 `
 	if actualGcode != expectedGcode {
-		t.Errorf("unexpected chime %s", actualGcode)
+		t.Errorf("unexpected chime ---%s--- vs ---%s---", actualGcode, expectedGcode)
 	}
 
 	actualGcode = channelChime(2)
 	expectedGcode =
-		`M300 S440 P200
+		`;// Chime to indicate next channel \\
+M300 S440 P200
 M300 S440 P100
 G4 P100
 M300 S440 P100
 G4 P100
 `
 	if actualGcode != expectedGcode {
-		t.Errorf("unexpected chime %s", actualGcode)
+		t.Errorf("unexpected chime ---%s--- vs ---%s---", actualGcode, expectedGcode)
 	}
 }
 
