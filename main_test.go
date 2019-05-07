@@ -93,3 +93,31 @@ T0				;Force T0 (driver stepper) on
 		t.Errorf("unexpected channel ---%s--- vs ---%s---", actualGcode, expectedGcode)
 	}
 }
+
+func Test_detectExtrusionMode(t *testing.T) {
+	mode, err := detectExtrusionMode("M83")
+	if err != nil {
+		t.Errorf("Unexpected error")
+	}
+	if mode != extrusionModeRelative {
+		t.Errorf("Unexpected mode")
+	}
+
+	mode, err = detectExtrusionMode("M82")
+	if err != nil {
+		t.Errorf("Unexpected error")
+	}
+	if mode != extrusionModeAbsolute {
+		t.Errorf("Unexpected mode")
+	}
+
+	mode, err = detectExtrusionMode("M0")
+	if err == nil {
+		t.Errorf("Unexpected error")
+	}
+
+	mode, err = detectExtrusionMode("M")
+	if err == nil {
+		t.Errorf("Unexpected error")
+	}
+}

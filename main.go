@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -10,8 +11,17 @@ import (
 )
 
 const (
-	splitterRetract = 600
+	splitterRetract       = 600
+	initRetract           = 10
+	extraRetract          = 5
+	oozeX                 = 100
+	oozeY                 = 200
+	extrusionModeUnknown  = -1
+	extrusionModeAbsolute = 0
+	extrusionModeRelative = 1
 )
+
+var globalExtrusionMode = extrusionModeUnknown
 
 func main() {
 	args := os.Args[1:]
@@ -53,6 +63,10 @@ func generateTempGcode(inputFile, outputFile string) {
 	currentTool := 0
 	for scanner.Scan() {
 		currentLine := scanner.Text()
+		extrusionMode, err := detectExtrusionMode(currentLine)
+		if err == nil {
+			globalExtrusionMode = extrusionMode
+		}
 		matches := re.FindStringSubmatch(currentLine)
 		isToolChange := matches != nil
 		if isToolChange {
@@ -73,13 +87,25 @@ func generateTempGcode(inputFile, outputFile string) {
 	}
 }
 
+func detectExtrusionMode(currentLine string) (mode int, err error) {
+	re := regexp.MustCompile(`^M(\d{2})`)
+	matches := re.FindStringSubmatch(currentLine)
+	isExtrusionMode := matches != nil
+	if isExtrusionMode {
+		switch matches[1] {
+		case "82":
+			return extrusionModeAbsolute, nil
+		case "83":
+			return extrusionModeRelative, nil
+		}
+	}
+	return extrusionModeUnknown, errors.New("Not an extrusion mode")
+}
+
 func getToolChangeGCode(currentTool, nextTool int) string {
 	headerTemplate := `;      SELECTRA GO     ;
 ;;; FOR PRUSA I3 BED ;;;
 ;;;;;   MODE 1     ;;;;;
-;;;; FOR LINEAR CAM ;;;;
-;; FOR TR8  CAM SCREW ;;
-;;;;;;;;TC START;;;;;;;;
 ;;;; TC from %d to %d ;;;;
 `
 	header := fmt.Sprintf(headerTemplate, currentTool, nextTool)
@@ -88,36 +114,39 @@ func getToolChangeGCode(currentTool, nextTool int) string {
 		return header + "T0\n"
 	}
 
-	moveNozzel := `M907 E1300		;Set E axis current
+	moveNozzel := fmt.Sprintf(`M907 E1300		;Set E axis current
 G92 E0; Set position
 ;/// Move nozzle to safe zone & start pump \\\
-G91; Relative
-G1 E-60 F9000	;Lift nozzle off part and retract
-G90; Absolute
-G1 X50 Y200.00 F9000	;Go to ooze area
-M82; Absolute E
-`
+M83					;Relative E Marlin
+G91					;Relative movement
+G1 Z5.5 E-%d F9000	;Lift nozzle off part and retract
+`, initRetract)
 
-	tipShaping := `;/// Perform tip shaping \\
+	tipShaping := fmt.Sprintf(`;/// Perform tip shaping \\
 G92 E0 				;Zero E
-G90					;Absolute
+G90					;Absolute movement
+G1 X%d Y%d F5000	;Move to ooze area
+M83					;Relative E Marlin
 M203 E90 T0     	;Increase the max feedrate of extruder
 G1 E13 F400 		;Extrude some filament
 G1 E11.5 F800 		;Pull back
 G1 E12.5 F1000 		;Push forward
 G1 E-100  F500000 	;Retract as fast as possible
 G91					;Relative mode
-`
+`, oozeX, oozeY)
 
-	retractIntoSplitter := `;// Pull into splitter \\
+	retractIntoSplitter := fmt.Sprintf(`;// Pull into splitter \\
 G92 E0 		;Zero E
-G1 E-600  F280 ;;;;;;;;;;MUST BE LOW F 
+G1 E-%d F8000	;m3 Go all the way up
 G92 E0
 M84 E
-;G-Sum 602.5
+G1 Z-5.5
+`, splitterRetract-100)
+	footerTemplate := `
+;;;;      TC END      ;;;;
 `
 	return header + moveNozzel + tipShaping + retractIntoSplitter + channelChime(nextTool) +
-		changeChannel(currentTool, nextTool) + reloadFilament() + primeFilament()
+		changeChannel(currentTool, nextTool) + reloadFilament() + primeFilament() + footerTemplate
 }
 
 func channelChime(nextTool int) string {
@@ -153,13 +182,11 @@ G91					;Relative
 ;M92 E138.54		;Reset to feeder steps/mm (per experiment)
 M907 E1300			;Set current again 
 G92 E0				;Set position
-G1 E1 F8500			;Kick
-G1 E600 			;Get past splitter
-G1 X28.88 E60 F210	;Get into hotend
-					;Sum 582
+G1 E%d F1500		;Get past splitter
+G1 E%d F400			;Get into hotend
 M907 E1050			;Set amps for constant 
 `
-	return template
+	return fmt.Sprintf(template, splitterRetract, initRetract)
 }
 
 func primeFilament() string {
@@ -167,7 +194,7 @@ func primeFilament() string {
 M83					;Relative E
 G90					;Absolute position
 G92 E0				;Set position
-G1 E60
+;G1 E60
 `
 	return template
 }
