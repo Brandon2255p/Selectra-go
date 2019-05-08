@@ -38,11 +38,14 @@ G4 P100
 
 func Test_changeChannel(t *testing.T) {
 	actualGcode := changeChannel(0, 1)
-	expectedGcode := `T1
+	expectedGcode := `
+;// Switch channel \\
+T1
 ;M92 E400		;Set E1 steps/mm for selector cam
 M907 E580		;Set amps for selector stepper
 G90				;Absolute mode based on entire Selectra range
-G92 E00		;Set the starting position
+M82				;Absolute E
+G92 E00			;Set the starting position
 G1 E10 F2000	;Move to the new position
 M84 E			;Disable E axis ready for switch
 T0				;Force T0 (driver stepper) on
@@ -52,11 +55,14 @@ T0				;Force T0 (driver stepper) on
 	}
 
 	actualGcode = changeChannel(1, 2)
-	expectedGcode = `T1
+	expectedGcode = `
+;// Switch channel \\
+T1
 ;M92 E400		;Set E1 steps/mm for selector cam
 M907 E580		;Set amps for selector stepper
 G90				;Absolute mode based on entire Selectra range
-G92 E10		;Set the starting position
+M82				;Absolute E
+G92 E10			;Set the starting position
 G1 E20 F2000	;Move to the new position
 M84 E			;Disable E axis ready for switch
 T0				;Force T0 (driver stepper) on
@@ -66,11 +72,14 @@ T0				;Force T0 (driver stepper) on
 	}
 
 	actualGcode = changeChannel(2, 0)
-	expectedGcode = `T1
+	expectedGcode = `
+;// Switch channel \\
+T1
 ;M92 E400		;Set E1 steps/mm for selector cam
 M907 E580		;Set amps for selector stepper
 G90				;Absolute mode based on entire Selectra range
-G92 E20		;Set the starting position
+M82				;Absolute E
+G92 E20			;Set the starting position
 G1 E00 F2000	;Move to the new position
 M84 E			;Disable E axis ready for switch
 T0				;Force T0 (driver stepper) on
@@ -80,11 +89,14 @@ T0				;Force T0 (driver stepper) on
 	}
 
 	actualGcode = changeChannel(4, 2)
-	expectedGcode = `T1
+	expectedGcode = `
+;// Switch channel \\
+T1
 ;M92 E400		;Set E1 steps/mm for selector cam
 M907 E580		;Set amps for selector stepper
 G90				;Absolute mode based on entire Selectra range
-G92 E40		;Set the starting position
+M82				;Absolute E
+G92 E40			;Set the starting position
 G1 E20 F2000	;Move to the new position
 M84 E			;Disable E axis ready for switch
 T0				;Force T0 (driver stepper) on

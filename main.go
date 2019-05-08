@@ -128,9 +128,7 @@ G90					;Absolute movement
 G1 X%d Y%d F5000	;Move to ooze area
 M83					;Relative E Marlin
 M203 E90 T0     	;Increase the max feedrate of extruder
-G1 E13 F400 		;Extrude some filament
-G1 E11.5 F800 		;Pull back
-G1 E12.5 F1000 		;Push forward
+G1 E9 F1000 		;Push forward
 G1 E-100  F500000 	;Retract as fast as possible
 G91					;Relative mode
 `, oozeX, oozeY)
@@ -163,11 +161,14 @@ G4 P100
 }
 
 func changeChannel(currentTool, nextTool int) string {
-	template := `T1
+	template := `
+;// Switch channel \\
+T1
 ;M92 E400		;Set E1 steps/mm for selector cam
 M907 E580		;Set amps for selector stepper
 G90				;Absolute mode based on entire Selectra range
-G92 E%d0		;Set the starting position
+M82				;Absolute E
+G92 E%d0			;Set the starting position
 G1 E%d0 F2000	;Move to the new position
 M84 E			;Disable E axis ready for switch
 T0				;Force T0 (driver stepper) on
@@ -177,7 +178,8 @@ T0				;Force T0 (driver stepper) on
 }
 
 func reloadFilament() string {
-	template := `;/// Preform re-load \\\
+	template := `
+;/// Preform re-load \\\
 G91					;Relative
 ;M92 E138.54		;Reset to feeder steps/mm (per experiment)
 M907 E1300			;Set current again 
@@ -190,11 +192,13 @@ M907 E1050			;Set amps for constant
 }
 
 func primeFilament() string {
-	template := `;/// Start Priming \\\
+	template := `
+;/// Start Priming \\\
+G91					;Relative movement
+G1 Z-5.5 F9000	    ;Lift nozzle off part and retract
 M83					;Relative E
 G90					;Absolute position
 G92 E0				;Set position
-;G1 E60
 `
 	return template
 }
