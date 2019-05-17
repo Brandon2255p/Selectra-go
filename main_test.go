@@ -133,3 +133,21 @@ func Test_detectExtrusionMode(t *testing.T) {
 		t.Errorf("Unexpected error")
 	}
 }
+
+func Test_detectLastZ(t *testing.T) {
+	mode, err := detectLastZ("M83")
+	if err == nil {
+		t.Errorf("Unexpected error on M83")
+	}
+	if mode != 0 {
+		t.Errorf("Unexpected error on M83")
+	}
+
+	mode, err = detectLastZ("G1 Z0.450 F12000.000")
+	if err != nil {
+		t.Errorf("Unexpected error")
+	}
+	if mode != 0.450 {
+		t.Errorf("Unexpected error for 0.450 = %f", mode)
+	}
+}
