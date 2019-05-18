@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	splitterRetract       = 600
+	splitterRetract       = 590
 	initRetract           = 10
 	extraRetract          = 5
 	oozeX                 = 220
@@ -25,9 +25,24 @@ const (
 	extrusionModeRelative = 1
 )
 
+var Position FileProgress
+
+type FileProgress struct {
+	FileSize        int64
+	CurrentPosition int64
+	LastProgress    int64
+}
+
+func (f *FileProgress) Progress(lineRead string) int64 {
+	bytesRead := int64(len(lineRead)) + 1
+
+	f.CurrentPosition += bytesRead
+	currentProgress := (f.CurrentPosition * 100 / f.FileSize)
+	return currentProgress
+}
+
 var globalExtrusionMode = extrusionModeUnknown
 var lastZ = 0.0
-var fileInfo os.FileInfo
 
 func main() {
 	args := os.Args[1:]
@@ -39,12 +54,18 @@ func main() {
 	}
 	inputFile := args[0]
 	outputFile := fmt.Sprintf("%s.bak.gcode", inputFile)
-	if fileInfo, err := os.Stat(inputFile); err != nil {
+	fileInfo, err := os.Stat(inputFile)
+	if err != nil {
 		log.Fatal("File does not exist")
 	}
+	fileSize := fileInfo.Size()
+	Position = FileProgress{FileSize: fileSize, CurrentPosition: 0}
+
+	fmt.Printf("Processing %d", Position.FileSize)
+	fmt.Printf("Current %d", Position.CurrentPosition)
 	generateTempGcode(inputFile, outputFile)
 
-	err := os.Rename(outputFile, inputFile)
+	err = os.Rename(outputFile, inputFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -69,6 +90,11 @@ func generateTempGcode(inputFile, outputFile string) {
 	currentTool := 0
 	for scanner.Scan() {
 		currentLine := scanner.Text()
+		percentage := Position.Progress(currentLine)
+		if percentage != Position.LastProgress {
+			fmt.Printf("Progress %d %%\n", percentage)
+			Position.LastProgress = percentage
+		}
 		extrusionMode, err := detectExtrusionMode(currentLine)
 		if err == nil {
 			globalExtrusionMode = extrusionMode
